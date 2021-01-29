@@ -1,7 +1,7 @@
 ﻿<# 
 .SYNOPSIS CloudBerry Drive performance probs with AWS CloudWatch integration
 .DESCRIPTION CloudBerry Drive performance checks with AWS CloudWatch integration using Copy-Item / Compare-Object and Remove-Item
-.NOTES This PowerShell script was developed and optimized for ScriptRunner. 
+.NOTES 
 The script will generate a random filename/filecontent along a fixed filesize (file-extension: cbdmon).
 The time (in ms) to Copy and Remove a file will be collected and pushed to CloudWatch Metric.
 The content of the orginal file and the file after copy to CloudBerry will be compared and result will be pushed to a CloudWatch Metric as well.
@@ -17,7 +17,6 @@ Version:
 # TODO: impl check for target-folder (to avoid typos or issues with Remove-part of the script)
 # TODO: impl logfile rolling/housekeeping
 # TODO: check, if there is already an instance of the script is running = lock-file
-# TODO: if diff is not OK, copy both files to a dlq folder to enable further checks
 
 
 $localHostname = [System.Net.Dns]::GetHostName()
