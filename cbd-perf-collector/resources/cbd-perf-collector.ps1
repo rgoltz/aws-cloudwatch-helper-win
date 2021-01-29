@@ -195,7 +195,7 @@ Try
     $RemoveStepElapsedMilliseconds = $stopwatch.ElapsedMilliseconds
     Write-Log -Message " OK: Remove-Item $DestinationPathAndFile OK after $RemoveStepElapsedMilliseconds ms."
     aws cloudwatch put-metric-data --metric-name "$stepScope" --namespace "$cloudwatchMetricname" --dimensions "InstanceId=$instanceId,$cloudwatchDimension" --unit Milliseconds --value $RemoveStepElapsedMilliseconds --region "$cloudwatchRegion"  
-    Write-Log -Message "  --> CloudWatch -> $stepScope : $RemoveStepElapsedMilliseconds for cmd Copy-Item pushed to CloudWatch (see metric: $cloudwatchMetricname -> $cloudwatchDimension)."
+    Write-Log -Message "  --> CloudWatch -> $stepScope : $RemoveStepElapsedMilliseconds for cmd Remove-Item pushed to CloudWatch (see metric: $cloudwatchMetricname -> $cloudwatchDimension)."
 }
 Catch
 {
