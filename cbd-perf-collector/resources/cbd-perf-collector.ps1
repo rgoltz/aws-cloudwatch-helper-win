@@ -2,14 +2,15 @@
 .SYNOPSIS CloudBerry Drive performance probs with AWS CloudWatch integration
 .DESCRIPTION CloudBerry Drive performance checks with AWS CloudWatch integration using Copy-Item / Compare-Object and Remove-Item
 .NOTES This PowerShell script was developed and optimized for ScriptRunner. 
-The script will generate a random filename/filecontent along a fixed filesize.
+The script will generate a random filename/filecontent along a fixed filesize (file-extension: cbdmon).
 The time (in ms) to Copy and Remove a file will be collected and pushed to CloudWatch Metric.
 The content of the orginal file and the file after copy to CloudBerry will be compared and result will be pushed to a CloudWatch Metric as well.
 Version:
 - 1.0 Robert Goltz: initial version without awscli/put-metric-data after local testing finished successfully
 - 1.1 Robert Goltz: define Get-Content / read-operation as dedicated check
 - 2.0 Robert Goltz: adding awscli cmds for cloudwatch put-metric-data for WriteLatency, ReadLatency, DeleteLatency
-.LINK https://github.com/<to-be-uploaded>
+- 2.1 Robert Goltz: adding logic to keep local + S3 file-content as file in case IsContentSame is not true (file-content differ on S3)
+.LINK https://github.com/rgoltz/aws-cloudwatch-helper-win/
 #>
 
 # TODO: check if local folder exists (LocalWindows*)
@@ -27,13 +28,12 @@ $localHostname = [System.Net.Dns]::GetHostName()
 # !! do not add "\" on the end of the following variables:
 # local folder, e.g. on C-drive
 $LocalWindowsDriveFolder = "D:\CloudWatch_cbd-perf-collector\temp"
-##$LocalWindowsDriveFolder = "C:\temp\cbd-source"
 # folder on CloudBerry Drive, e.g. F-drive
 $CloudBerryDriveFolder = "F:\PKSPG_SFS\att"
-##$CloudBerryDriveFolder = "C:\temp\cbd-target"
-# local folder for logging if this script
+# local folder for logging the results/status if this script here
 $LocalWindowsLogFolder = "D:\CloudWatch_cbd-perf-collector\logs"
-##$LocalWindowsLogFolder = "C:\temp\cbd-perf-collector-logs"
+# local folder for error-cases to keep files for debugging
+$LocalWindowsErrorFolder = "D:\CloudWatch_cbd-perf-collector\error"
 
 
 #####
@@ -50,7 +50,7 @@ $instanceId = (Invoke-WebRequest -Uri http://169.254.169.254/latest/meta-data/in
 
 ####################################
 
-# https://github.com/awslabs/aws-systems-manager/blob/master/Community/101-SSH-PowerShell-Remoting/install.ps1
+# https://github.com/awslabs/aws-systems-manager/blob/master/Community/101-SSH-PowerShell-Remoting/install.ps1 (by Trevor Sullivan)
 function Write-Log {
   [CmdletBinding()]
   param (
@@ -79,15 +79,15 @@ function Get-RandomHex {
 #################
 
 Write-Log -Message "---> START: starting PowerShell script on $localHostname & generating filename/filecontent ..."
-# generate and set random filename (e.g. A19E2C348E6BFF373172131F6A1241.txt = 123 Bits)
+# generate and set random filename (e.g. A19E2C348E6BFF373172131F6A1241.cbdmon = 123 Bits)
 $randomFileNameHex = Get-RandomHex -Bits 123
 # generate and set random filecontent (602 KB (617.290 Bytes) = 1234567 Bits)
 $randomFileContentLocalHex = Get-RandomHex -Bits 1234567
-$randomFileContentLocalHex | Out-File -FilePath "$LocalWindowsDriveFolder\$randomFileNameHex.txt"
+$randomFileContentLocalHex | Out-File -FilePath "$LocalWindowsDriveFolder\$randomFileNameHex.cbdmon"
 
 # set variables with full path and filename
-$SourcePathAndFile = "$LocalWindowsDriveFolder\$randomFileNameHex.txt"
-$DestinationPathAndFile = "$CloudBerryDriveFolder\$randomFileNameHex.txt"
+$SourcePathAndFile = "$LocalWindowsDriveFolder\$randomFileNameHex.cbdmon"
+$DestinationPathAndFile = "$CloudBerryDriveFolder\$randomFileNameHex.cbdmon"
 
 
 
@@ -158,11 +158,16 @@ Try
     #ContentTargetFile is already set above for reading the file from CloudBerry
     if (Compare-Object $ContentSourceFile $ContentTargetFile)  {
         Write-Log -Message " WARN: Compare-Object - content of both files are NOT the same!"
-        # awscli put-metric-data for 1, since strings are different
+        aws cloudwatch put-metric-data --metric-name "$stepScope" --namespace "$cloudwatchMetricname" --dimensions "InstanceId=$instanceId,$cloudwatchDimension" --unit Count --value 1 --region "$cloudwatchRegion"
         Write-Log -Message "  --> CloudWatch-compareFileContentResult value: 1 (= DIFF) pushed to CloudWatch."
+        # Pipe Content original generated content to .LOCAL file for further review/debugging
+        $ContentSourceFile | Out-File "$LocalWindowsErrorFolder\$randomFileNameHex.cbdmon.LOCAL"
+        # Pipe Content which differ from original content .S3 file for further review/debugging
+        $ContentTargetFile | Out-File "$LocalWindowsErrorFolder\$randomFileNameHex.cbdmon.S3"
+        Write-Log -Message "  --> Files saved to $LocalWindowsErrorFolder\$randomFileNameHex.cbdmon.S3/.LOCAL due to Compare-Object result"
     } Else {
         Write-Log -Message " OK: Compare-Object - content of both files are the same!"
-        # awscli put-metric-data for 0, since strings are the same
+        aws cloudwatch put-metric-data --metric-name "$stepScope" --namespace "$cloudwatchMetricname" --dimensions "InstanceId=$instanceId,$cloudwatchDimension" --unit Count --value 0 --region "$cloudwatchRegion" 
         Write-Log -Message "  --> CloudWatch-compareFileContentResult value: 0 (= SAME) pushed to CloudWatch."
     } 
 }
