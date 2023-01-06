@@ -6,3 +6,4 @@ Several helper scripts for AWS CloudWatch Integration &amp; AWS CloudWatch Agent
 | script        | scope           | usage  |
 | ------------- |-------------|-----|
 | cbd-perf-collector.ps1      | PowerShell Script, which measures write/delete performance for MSP 360 CloudBerry Drive (S3 as Windows Drive) and push data point to AWS CloudWatch Metrics.  | triggered via local schedule or as Document via AWS Systems Manager |
+| winfirewallprobe.ps1      | PowerShell Script, which check the status of Windows Firewall (definied via GPO) and push state as 0/1 value to AWS CloudWatch Metrics.  | triggered via local schedule or as Document via AWS Systems Manager |
