@@ -1,9 +1,7 @@
 <#
 .SYNOPSIS Windows Firewall Probe / Watchdog
 .DESCRIPTION Windows Firewall checks collecting state of local Windows Firwall and push this information to CloudWatch (Metric)
-.NOTES
-The script will query Windows Firewall Status and push this information into a CloudWatch Metric - If the state is expected (=disabled), it's always pushed as 0/zero.
-Firewall-Settings are defined as AWS SecurityGroups in CloudFormation.
+.NOTES The script will query Windows Firewall Status and push this information into a CloudWatch Metric - If the state is expected (=disabled), it's always pushed as 0/zero. Firewall-Settings are defined as AWS SecurityGroups in CloudFormation.
 Version:
 - 1.0 Robert Goltz: initial version with checks on GPO- and localhost-PolicyStore via PowerShell + check current Registry value
 .LINK https://github.com/rgoltz/aws-cloudwatch-helper-win/windows-firewall-probe/
@@ -179,7 +177,6 @@ Catch
 }
 
 
-
 #################
 # check 1-3: check GPO active state for Public
 #################
@@ -204,7 +201,6 @@ Catch
     $ErrorMessage = $_.Exception.Message
     Write-Log -Message "$checkScope    : ERROR-catched: query status and push to CloudWatch failed with: $ErrorMessage"
 }
-
 
 
 #################
@@ -232,7 +228,6 @@ Catch
 }
 
 
-
 #################
 # check 2-2: check localhost status - Private
 #################
@@ -256,6 +251,7 @@ Catch
     $ErrorMessage = $_.Exception.Message
     Write-Log -Message "$checkScope  : ERROR-catched: query status and push to CloudWatch failed with: $ErrorMessage"
 }
+
 
 #################
 # check 2-3: check localhost status - Public
@@ -282,8 +278,6 @@ Catch
 }
 
 
-
-
 #################
 # check 3: get status from registry
 #################
@@ -308,6 +302,15 @@ Catch
     $ErrorMessage = $_.Exception.Message
     Write-Log -Message "$checkScope : ERROR-catched: query status and push to CloudWatch failed with: $ErrorMessage"
 }
+
+
+###############################################################################
+# Simple LogFile-Housekeeping (based on the amount of lines inside the logfile)
+$maxlines = 5000
+$logfile = "$LocalWindowsLogFolder\winfirewall-probe.log"
+
+(Get-Content $logfile -tail $maxlines -readcount 0) |
+ Set-Content $logfile
 
 
 Write-Log -Message "*********************************************** END - *** WindowsFirewallProbe *** $localHostname"
